@@ -104,9 +104,9 @@ public class OrderService {
                     productName = item.getProduct().getName() != null ?
                             item.getProduct().getName() : "غير محدد";
 
-                    if (item.getProduct().getImageUrl() != null &&
-                            !item.getProduct().getImageUrl().isBlank()) {
-                        imageUrl = item.getProduct().getImageUrl();
+                    if (item.getProduct().getImages() != null &&
+                            !item.getProduct().getImages().isEmpty()) {
+                        imageUrl = item.getProduct().getImages().get(0);
                     }
 
                     System.out.println("📧 Email - Product: " + productName +
@@ -147,7 +147,6 @@ public class OrderService {
                     <div style="margin-top:20px;background:#ffffff;padding:20px;border:1px solid #e0e0e0;border-radius:8px">
                         <p><strong>🆔 رقم الطلب:</strong> %d</p>
                         <p><strong>👤 اسم العميل:</strong> %s</p>
-                        <p><strong>📧 البريد الإلكتروني:</strong> %s</p>
                         <p><strong>📱 رقم الهاتف:</strong> %s</p>
                         <p><strong>📍 العنوان:</strong> %s</p>
                         <p><strong>📊 الحالة:</strong> <span style="color:#27ae60;font-weight:bold">%s</span></p>
@@ -168,7 +167,6 @@ public class OrderService {
             """,
                     savedOrder.getId(),
                     savedOrder.getCustomerName(),
-                    savedOrder.getCustomerEmail(),
                     savedOrder.getCustomerPhone(),
                     savedOrder.getShippingAddress(),
                     savedOrder.getStatus(),
@@ -178,7 +176,6 @@ public class OrderService {
             );
 
             emailService.sendEmail("mahmoudkhakifa140@gmail.com", subject, body);
-            emailService.sendEmail("ms4002@fayoum.edu.eg", subject, body);
 
             System.out.println("✅ Email sent successfully for Order #" + savedOrder.getId());
 

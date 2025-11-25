@@ -1,16 +1,12 @@
 package org.example.gold.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * Represents a product entity stored in the database.
- *
- * Each product belongs to one category.
- */
 @Entity
 @Table(name = "products")
 @Data
@@ -19,53 +15,38 @@ import java.time.Instant;
 @Builder
 public class Product {
 
-    /** The unique identifier of the product. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** The product name. */
     @Column(nullable = false, length = 100)
     private String name;
 
-    /** Detailed description of the product. */
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 1000)
     private String description;
 
-
-    /** Product price. */
-    @Column(nullable = false)
     private Double price;
+    private Integer quantity;
+    private boolean active;
 
-    /** Quantity available in stock. */
-    @Column(nullable = false)
-    private int quantity;
+    @ElementCollection
+    private List<String> images = new ArrayList<>();
 
-    /** Whether the product is active and available for sale. */
-    @Column(nullable = false)
-    private boolean active = true;
-
-    /** Image URL or path. */
-    private String imageUrl;
-
-    /** The category to which this product belongs. */
+    // استخدام JsonIgnore هنا أيضاً
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
-    @JsonBackReference
-    @ToString.Exclude
+    @JoinColumn(name = "category_id")
+    @JsonIgnore
     private Category category;
 
-    /** Creation timestamp. */
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    /** Last update timestamp. */
     private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
-        updatedAt = createdAt;
+        updatedAt = Instant.now();
     }
 
     @PreUpdate

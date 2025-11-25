@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.gold.model.Category;
 import org.example.gold.model.Order;
 import org.example.gold.model.Product;
+import org.example.gold.model.ProductDTO;
 import org.example.gold.service.ImageUploadUtil;
 import org.example.gold.service.OrderService;
 import org.example.gold.service.ProductService;
@@ -16,10 +17,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@CrossOrigin("*")
+@CrossOrigin(origins = "*",
+        allowedHeaders = "*",
+        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class AdminController {
 
     private final OrderService orderService;
@@ -56,18 +63,23 @@ public class AdminController {
 
     // ========================= Products =========================
     @PostMapping("/products/upload")
-    public ResponseEntity<Product> createProductWithImage(
+    public ResponseEntity<ProductDTO> createProductWithImages(
             @RequestParam String name,
             @RequestParam String description,
             @RequestParam Double price,
             @RequestParam Integer quantity,
             @RequestParam boolean active,
             @RequestParam Long categoryId,
-            @RequestParam(value = "image", required = false) MultipartFile image) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
 
-        String imageUrl = null;
-        if (image != null && !image.isEmpty()) {
-            imageUrl = imageUploadUtil.saveImage(image);
+        List<String> imageUrls = new ArrayList<>();
+
+        if (images != null && !images.isEmpty()) {
+            for (MultipartFile img : images) {
+                if (!img.isEmpty()) {
+                    imageUrls.add(imageUploadUtil.saveImage(img));
+                }
+            }
         }
 
         Product product = new Product();
@@ -76,38 +88,52 @@ public class AdminController {
         product.setPrice(price);
         product.setQuantity(quantity);
         product.setActive(active);
-        product.setImageUrl(imageUrl);
+        product.setImages(imageUrls);
         product.setCategory(productService.getCategoryById(categoryId));
 
-        return new ResponseEntity<>(productService.save(product), HttpStatus.CREATED);
+        Product saved = productService.save(product);
+        return new ResponseEntity<>(productService.findById(saved.getId()).orElseThrow(), HttpStatus.CREATED);
     }
 
     @PutMapping("/products/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id,
-                                                 @RequestParam String name,
-                                                 @RequestParam String description,
-                                                 @RequestParam Double price,
-                                                 @RequestParam Integer quantity,
-                                                 @RequestParam boolean active,
-                                                 @RequestParam Long categoryId,
-                                                 @RequestParam(value = "image", required = false) MultipartFile image) {
+    public ResponseEntity<ProductDTO> updateProduct(
+            @PathVariable Long id,
+            @RequestParam String name,
+            @RequestParam String description,
+            @RequestParam Double price,
+            @RequestParam Integer quantity,
+            @RequestParam boolean active,
+            @RequestParam Long categoryId,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
 
-        return productService.findById(id)
-                .map(existing -> {
-                    existing.setName(name);
-                    existing.setDescription(description);
-                    existing.setPrice(price);
-                    existing.setQuantity(quantity);
-                    existing.setActive(active);
-                    existing.setCategory(productService.getCategoryById(categoryId));
+        Optional<Product> existingProduct = productService.findProductEntityById(id);
 
-                    if (image != null && !image.isEmpty()) {
-                        existing.setImageUrl(imageUploadUtil.saveImage(image));
-                    }
+        if (existingProduct.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
 
-                    return ResponseEntity.ok(productService.save(existing));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        Product product = existingProduct.get();
+
+        product.setName(name);
+        product.setDescription(description);
+        product.setPrice(price);
+        product.setQuantity(quantity);
+        product.setActive(active);
+        product.setCategory(productService.getCategoryById(categoryId));
+
+        // إذا تم رفع صور جديدة
+        if (images != null && !images.isEmpty()) {
+            List<String> imageUrls = new ArrayList<>();
+            for (MultipartFile img : images) {
+                if (!img.isEmpty()) {
+                    imageUrls.add(imageUploadUtil.saveImage(img));
+                }
+            }
+            product.setImages(imageUrls);
+        }
+
+        Product saved = productService.save(product);
+        return ResponseEntity.ok(productService.findById(saved.getId()).orElseThrow());
     }
 
     @DeleteMapping("/products/{id}")
@@ -117,25 +143,29 @@ public class AdminController {
     }
 
     @GetMapping("/products")
-    public Page<Product> getAllProducts(@RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "10") int size) {
+    public Page<ProductDTO> getAllProducts(@RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return productService.findAll(pageable);
     }
 
-
     @GetMapping("/products/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
         return productService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
     // ========================= Categories =========================
     @PostMapping("/categories")
-    public ResponseEntity<Category> createCategory(@RequestBody Category category) {
-        return ResponseEntity.ok(categoryService.save(category));
+    public ResponseEntity<?> createCategory(@RequestBody Category category) {
+        try {
+            category.setId(null);
+            Category savedCategory = categoryService.save(category);
+            return ResponseEntity.ok(savedCategory);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("خطأ في إنشاء الفئة: " + e.getMessage());
+        }
     }
 
     @GetMapping("/categories/{id}")
@@ -145,25 +175,29 @@ public class AdminController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
     @PutMapping("/categories/{id}")
-    public ResponseEntity<Category> updateCategory(@PathVariable Long id, @RequestBody Category updated) {
-        return categoryService.findById(id)
-                .map(existing -> {
-                    existing.setName(updated.getName());
-                    existing.setDescription(updated.getDescription());
-                    existing.setActive(updated.isActive());
-                    return ResponseEntity.ok(categoryService.save(existing));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateCategory(@PathVariable Long id, @RequestBody Category updated) {
+        try {
+            return categoryService.findById(id)
+                    .map(existing -> {
+                        existing.setName(updated.getName());
+                        existing.setDescription(updated.getDescription());
+                        return ResponseEntity.ok(categoryService.save(existing));
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("خطأ في تحديث الفئة: " + e.getMessage());
+        }
     }
-
-
 
     @DeleteMapping("/categories/{id}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
-        categoryService.delete(id);
-        return ResponseEntity.noContent().build();
+        try {
+            categoryService.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/categories")

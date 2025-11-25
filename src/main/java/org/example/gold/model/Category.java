@@ -1,18 +1,12 @@
 package org.example.gold.model;
 
-
-
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Represents a product category in the system.
- *
- * Each category can have multiple products.
- */
 @Entity
 @Table(name = "categories")
 @Data
@@ -21,40 +15,31 @@ import java.util.List;
 @Builder
 public class Category {
 
-    /** The unique identifier of the category. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** The category name. */
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    /** A brief description of the category. */
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 500)
     private String description;
 
-    /** Whether this category is active or not. */
-    @Column(nullable = false)
-    private boolean active = true;
+    // استخدام JsonIgnore بدلاً من JsonBackReference للتجنب الكامل للمشاكل
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JsonIgnore
+    @Builder.Default
+    private List<Product> products = new ArrayList<>();
 
-    /** Timestamp for when the category was created. */
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    /** Timestamp for when the category was last updated. */
     private Instant updatedAt;
-
-    /** The list of products that belong to this category. */
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    @ToString.Exclude
-    private List<Product> products;
 
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
-        updatedAt = createdAt;
+        updatedAt = Instant.now();
     }
 
     @PreUpdate
