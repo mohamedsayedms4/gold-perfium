@@ -35,4 +35,9 @@ public class CategoryService {
     public void delete(Long id) {
         categoryRepository.deleteById(id);
     }
+
+    public Optional<Category> findByIdWithProducts(Long id) {
+        return categoryRepository.findByIdWithProducts(id);
+    }
+
 }

@@ -13,4 +13,7 @@ public class CategoryDTO {
 
     // يمكن إضافة عدد المنتجات إذا أردت
     private Integer productsCount;
+
+    private String image;
+
 }

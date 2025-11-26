@@ -124,6 +124,27 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
+    @Transactional(readOnly = true)
+    public Page<ProductDTO> searchProductsInCategory(Long categoryId, String keyword, Pageable pageable) {
+        Page<Product> productsPage = productRepository.searchInCategory(categoryId, keyword, pageable);
+        List<Product> products = productsPage.getContent();
+
+        if (!products.isEmpty()) {
+            List<Long> productIds = products.stream()
+                    .map(Product::getId)
+                    .collect(Collectors.toList());
+
+            productRepository.findByIdInWithImages(productIds);
+        }
+
+        List<ProductDTO> dtos = products.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtos, pageable, productsPage.getTotalElements());
+    }
+
+
     public Category getCategoryById(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found: " + id));

@@ -12,9 +12,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
-@CrossOrigin("*")
+//@CrossOrigin("*")
 public class ProductController {
-
     private final ProductService productService;
 
     @GetMapping
@@ -52,5 +51,15 @@ public class ProductController {
                                            @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return productService.searchProducts(keyword, pageable);
+    }
+
+    // إضافة endpoint جديد للبحث ضمن كاتجوري معينة
+    @GetMapping("/category/{categoryId}/search")
+    public Page<ProductDTO> searchProductsInCategory(@PathVariable Long categoryId,
+                                                     @RequestParam String keyword,
+                                                     @RequestParam(defaultValue = "0") int page,
+                                                     @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return productService.searchProductsInCategory(categoryId, keyword, pageable);
     }
 }

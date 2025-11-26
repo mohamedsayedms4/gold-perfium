@@ -25,6 +25,8 @@ public class Category {
     @Column(length = 500)
     private String description;
 
+    private String image;
+
     // استخدام JsonIgnore بدلاً من JsonBackReference للتجنب الكامل للمشاكل
     @OneToMany(mappedBy = "category", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JsonIgnore
